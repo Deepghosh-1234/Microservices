@@ -1,0 +1,12 @@
+server:
+  port: 8888
+
+spring:
+  cloud:
+    config:
+      server:
+        git:
+          uri: https://github.com/Deepghosh-1234/Java-Project
+          default-label: main
+          clone-on-start: true 
+          search-paths: config-server-1
