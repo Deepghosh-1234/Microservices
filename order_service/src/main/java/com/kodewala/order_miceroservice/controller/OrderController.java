@@ -12,56 +12,68 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.kodewala.order_miceroservice.dto.PaymentDTO;
 import com.kodewala.order_miceroservice.feign_client.PaymentFeignClient;
+import com.kodewala.order_miceroservice.kafka.NotificationProducer;
 import com.kodewala.order_miceroservice.order_entity.Order;
 import com.kodewala.order_miceroservice.repo.OrderRepository;
 
 @RestController
 public class OrderController {
 
-    private static final Logger log =
-            LoggerFactory.getLogger(OrderController.class); 
+	private static final Logger log = LoggerFactory.getLogger(OrderController.class);
 
-    @Autowired
-    private OrderRepository orderRepository;
+	@Autowired
+	private OrderRepository orderRepository;
 
-    @Autowired
-    private PaymentFeignClient paymentFeign;
+	@Autowired
+	private PaymentFeignClient paymentFeign;
+	@Autowired
+	private NotificationProducer producer;
 
-    @PostMapping("/placeOrder")
-    public String createOrder(@RequestBody Order order) {
+	@PostMapping("/placeOrder")
+	public String createOrder(@RequestBody Order order) {
 
-        log.info("Place order API called");   
+	    log.info("Place order API called");
 
-        Order savedOrder = orderRepository.save(order);
+	    Order savedOrder = orderRepository.save(order);
+	    log.info("Order saved with id: {}", savedOrder.getId());
 
-        log.info("Order saved with id: {}", savedOrder.getId()); 
+	    PaymentDTO payment = new PaymentDTO();
+	    payment.setOrderId(savedOrder.getId());
+	    payment.setAmount(savedOrder.getPrice());
 
-        PaymentDTO payment = new PaymentDTO();
-        payment.setOrderId(savedOrder.getId());
-        payment.setAmount(savedOrder.getPrice());
+	    log.info("Calling payment service");
 
-        log.info("Calling payment service"); 
+	    PaymentDTO response = paymentFeign.makePayment(payment);
+	    log.info("Payment response received: {}", response.getStatus());
 
-        PaymentDTO response = paymentFeign.makePayment(payment);
+	    try {
+	        String email = order.getEmail();
+	        String subject = "Order Confirmation";
+	        String message = "Your order " + savedOrder.getId() + " is confirmed";
 
-        log.info("Payment response received: {}", response.getStatus()); 
+	        producer.sendNotification(email, subject, message);
+	        log.info("Notification sent to Kafka");
 
-        return "Payment Status: " + response.getStatus();
-    }
+	    } catch (Exception e) {
+	        log.error("Failed to send Kafka message", e);
+	    }
 
-    @GetMapping("/getOrder")
-    public List<Order> getAllOrders() {
+	    return "Payment Status: " + response.getStatus();
+	}
 
-        log.info("Fetching all orders"); 
+	@GetMapping("/getOrder")
+	public List<Order> getAllOrders() {
 
-        return orderRepository.findAll();
-    }
+		log.info("Fetching all orders");
 
-    @GetMapping("/")
-    public String home() {
+		return orderRepository.findAll();
+	}
 
-        log.info("Home API called"); 
+	@GetMapping("/")
+	public String home() {
 
-        return "Order Service is running";
-    }
+		log.info("Home API called");
+
+		return "Order Service is running";
+	}
 }
