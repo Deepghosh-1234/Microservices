@@ -25,11 +25,14 @@ public class KafkaNotificationConsumer {
 	}
 
 	private void sendEmail(String email, String subject, String body) {
-
-		log.info("Sending Email...");
-		log.info("To: {}", email);
-		log.info("Subject: {}", subject);
-		log.info("Message: {}", body);
+		try {
+			log.info("Sending Email...");
+			log.info("To: {}", email);
+			log.info("Subject: {}", subject);
+			log.info("Message: {}", body);
+		} catch (Exception e) {
+			log.error("failed to send email ", e);
+		}
 
 	}
 }
