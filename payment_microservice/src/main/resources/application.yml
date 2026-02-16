@@ -2,6 +2,6 @@ spring:
   config:
     import: "configserver:http://localhost:8888"
   application:
-    name: payment_microservice
+    name: payment-microservice
   profiles:
     active: dev
